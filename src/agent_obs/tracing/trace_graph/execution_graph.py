@@ -1,12 +1,19 @@
+"""Core execution graph primitives: Nodes, Edges, and the ExecutionGraph.
+
+An agent run is represented as a Tree rather than a flat log, with 
+serialization logic cleanly decoupled into dedicated helper classes.
+This makes the run queryable, diffable, and replayable from any point.
+"""
 
 from __future__ import annotations
 
+from .trace_edge import TraceEdge
+from .trace_node import TraceNode
+from .enums import EdgeType
+
 import uuid
 
-from .edge import TraceEdge
-from .node import TraceNode
-
-class ExecutionGraph:
+class ExecutionTree:
     """
     Role:
         Represents one complete, self-contained execution workflow as a directed graph.
@@ -33,14 +40,13 @@ class ExecutionGraph:
             and adjacency maps required for fast graph navigation.
 
         Output:
-            Sets up an empty graph instance with initialized collections (`nodes`, `edges`, `_adjacency`, `_reverse_adjacency`) 
+            Sets up an empty graph instance with initialized collections (`nodes`, `edges`, `_adjacency`) 
             and a unique `run_id`.
         """
         self.run_id = run_id or str(uuid.uuid4())
         self.nodes: dict[str, TraceNode] = {}
         self.edges: list[TraceEdge] = []
         self._adjacency: dict[str, list[str]] = {}
-        self._reverse_adjacency: dict[str, list[str]] = {}
         self.root_node_id: str | None = None
 
     def add_node(self, node: TraceNode) -> None:
@@ -70,17 +76,20 @@ class ExecutionGraph:
         self.nodes[node.node_id] = node
 
         self._adjacency.setdefault(node.node_id, [])
-        self._reverse_adjacency.setdefault(node.node_id, [])
 
         if node.parent_id is not None:
             self._adjacency.setdefault(node.parent_id, [])
-            self._reverse_adjacency.setdefault(node.parent_id, [])
 
             if node.node_id not in self._adjacency[node.parent_id]:
                 self._adjacency[node.parent_id].append(node.node_id)
 
-            if node.parent_id not in self._reverse_adjacency[node.node_id]:
-                self._reverse_adjacency[node.node_id].append(node.parent_id)
+            # Automatically create and append a PARENT_CHILD trace edge
+            parent_edge = TraceEdge(
+                source_id=node.parent_id,
+                target_id=node.node_id,
+                edge_type=EdgeType.PARENT_CHILD
+            )
+            self.edges.append(parent_edge)
 
         elif self.root_node_id is None:
             self.root_node_id = node.node_id
@@ -95,7 +104,7 @@ class ExecutionGraph:
             between nodes after they have been created, validating that both source and target nodes exist.
 
         Output:
-            Appends the edge to the graph's edge list and updates both forward and reverse adjacency mappings.
+            Appends the edge to the graph's edge list and updates forward mappings.
         """
 
         if edge.source_id not in self.nodes:
@@ -111,13 +120,9 @@ class ExecutionGraph:
         self.edges.append(edge)
 
         self._adjacency.setdefault(edge.source_id, [])
-        self._reverse_adjacency.setdefault(edge.target_id, [])
 
         if edge.target_id not in self._adjacency[edge.source_id]:
             self._adjacency[edge.source_id].append(edge.target_id)
-
-        if edge.source_id not in self._reverse_adjacency[edge.target_id]:
-            self._reverse_adjacency[edge.target_id].append(edge.source_id)
 
     def get_node(self, node_id: str) -> TraceNode:
         """
@@ -154,7 +159,7 @@ class ExecutionGraph:
             for child_id in self._adjacency.get(node_id, [])
         ]
 
-    def ancestors(self, node_id: str) -> list[TraceNode]:
+    def get_ancestors(self, node_id: str) -> list[TraceNode]:
         """
         Role:
             Retrieves all upstream ancestor nodes (parents, grandparents, etc.) for a given node.
@@ -170,27 +175,18 @@ class ExecutionGraph:
         if node_id not in self.nodes:
             raise KeyError(f"Node not found: {node_id}")
 
-        seen: set[str] = set()
-        stack = list(self._reverse_adjacency.get(node_id, []))
         ancestors: list[TraceNode] = []
 
-        while stack:
-            current = stack.pop()
-
-            if current in seen:
-                continue
-
-            seen.add(current)
-
-            if current in self.nodes:
-                ancestors.append(self.nodes[current])
-                stack.extend(
-                    self._reverse_adjacency.get(current, [])
-                )
+        node = self.nodes[node_id]
+        ancestor_id = node.parent_id
+        while (ancestor_id is not None):
+            ancestor = self.nodes[ancestor_id]
+            ancestors.append(ancestor)
+            ancestor_id = ancestor.parent_id
 
         return ancestors
 
-    def descendants(self, node_id: str) -> list[TraceNode]:
+    def get_descendants(self, node_id: str) -> list[TraceNode]:
         """
         Role:
             Retrieves all downstream descendant nodes (children, grandchildren, etc.) for a given node.
@@ -264,9 +260,6 @@ class ExecutionGraph:
             if node_id not in self._adjacency:
                 return False
 
-            if node_id not in self._reverse_adjacency:
-                return False
-
             # Check parent relationship.
             if node.parent_id is not None:
 
@@ -277,12 +270,6 @@ class ExecutionGraph:
                 # Parent must contain this node as a child.
                 if node_id not in self._adjacency.get(
                     node.parent_id, []
-                ):
-                    return False
-
-                # Node must contain its parent in reverse adjacency.
-                if node.parent_id not in self._reverse_adjacency.get(
-                    node_id, []
                 ):
                     return False
 
@@ -301,87 +288,4 @@ class ExecutionGraph:
                 if self.nodes[child_id].parent_id != parent_id:
                     return False
 
-        # Check reverse adjacency.
-        for child_id, parent_ids in self._reverse_adjacency.items():
-
-            if child_id not in self.nodes:
-                return False
-
-            for parent_id in parent_ids:
-
-                if parent_id not in self.nodes:
-                    return False
-
-                if child_id not in self._adjacency.get(
-                    parent_id, []
-                ):
-                    return False
-
         return True
-
-    def to_dict(self) -> dict:
-        """
-        Role:
-            Converts the entire execution graph, including all nodes, edges, and metadata, into a serializable dictionary.
-
-        When & Why:
-            Called during persistence, logging, or state export to safely store the complete 
-            execution history to a file or database.
-
-        Output:
-            Returns a `dict[str, Any]` containing the run ID, root node ID, and serialized representations of all nodes and edges.
-        """
-
-        return {
-            "run_id": self.run_id,
-            "root_node_id": self.root_node_id,
-            "nodes": [
-                node.to_dict()
-                for node in self.nodes.values()
-            ],
-            "edges": [
-                edge.to_dict()
-                for edge in self.edges
-            ],
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict) -> "ExecutionGraph":
-        """
-        Role:
-            Reconstructs and instantiates a complete ExecutionGraph from a stored dictionary.
-
-        When & Why:
-            Invoked when loading historical run data from storage or logs to restore the 
-            full graph structure for offline debugging, visualization, or auditing.
-
-        Output:
-            Returns a fully initialized and populated `ExecutionGraph` instance with all nodes, edges, and adjacency maps restored.
-        """
-
-        graph = cls(run_id=data.get("run_id"))
-
-        # Restore nodes first.
-        for node_data in data.get("nodes", []):
-            node = TraceNode.from_dict(node_data)
-
-            # Nodes with parents require the parent to already exist.
-            # Therefore, deserialize root nodes first.
-            if node.parent_id is None:
-                graph.add_node(node)
-
-        for node_data in data.get("nodes", []):
-            node = TraceNode.from_dict(node_data)
-
-            if node.parent_id is not None:
-                graph.add_node(node)
-
-        # Restore the original root ID.
-        graph.root_node_id = data.get("root_node_id")
-
-        # Restore causal edges.
-        for edge_data in data.get("edges", []):
-            edge = TraceEdge.from_dict(edge_data)
-            graph.add_edge(edge)
-
-        return graph

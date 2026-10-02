@@ -1,19 +1,21 @@
-
 """Execution context propagated through a single agent run."""
 
 from __future__ import annotations
+
 from contextvars import ContextVar
-from dataclasses import dataclass, field
 from typing import Any
 
 
-@dataclass
 class ExecutionContext:
-    run_id: str
-    graph: Any
-    metadata: dict[str, Any] = field(default_factory=dict)
 
-    def __post_init__(self):
+    def __init__(
+        self,
+        run_id: str,
+        metadata: dict[str, Any] | None = None,
+    ):
+        self.run_id = run_id
+        self.metadata = metadata or {}
+
         self._node_stack: ContextVar[list] = ContextVar(
             f"trace_stack_{self.run_id}",
             default=[],
@@ -47,7 +49,6 @@ class ExecutionContext:
     def child_context(self, **metadata):
         return ExecutionContext(
             run_id=self.run_id,
-            graph=self.graph,
             metadata={
                 **self.metadata,
                 **metadata,

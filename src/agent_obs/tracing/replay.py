@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..core.graph import ExecutionGraph
-from ..core.node import TraceNode
-from ..core.enums import NodeType
+from .trace_graph.execution_graph import ExecutionTree
+from .trace_graph.trace_node import TraceNode
+from ..tracing.trace_graph.enums import NodeType
 
 
 @dataclass
@@ -27,10 +27,10 @@ class ReplayEngine:
     behavior diverges.
     """
 
-    def __init__(self, graph: ExecutionGraph):
+    def __init__(self, graph: ExecutionTree):
         pass
 
-    def replay(self, overrides: list[ReplayOverride] | None = None) -> ExecutionGraph:
+    def replay(self, overrides: list[ReplayOverride] | None = None) -> ExecutionTree:
         """Produce a new ExecutionGraph representing the replayed run."""
         pass
 

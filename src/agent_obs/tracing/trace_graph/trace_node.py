@@ -1,12 +1,10 @@
 from __future__ import annotations
 
-import time
-import uuid
 from dataclasses import dataclass, field
 from typing import Any
-
+import time
+import uuid
 from .enums import NodeType
-
 
 @dataclass
 class TraceNode:
@@ -63,67 +61,8 @@ class TraceNode:
         """
         self.output_data = output
 
-    def to_dict(self) -> dict[str, Any]:
-        """
-        Role:
-            Converts the TraceNode instance and its internal attributes 
-            into a standard, flat Python dictionary format.
 
-        When & Why:
-            Invoked before serialization, local file persistence, or JSON logging, 
-            allowing complex dataclass objects to safely cross system boundaries 
-            and be stored or transmitted.
-
-        Output:
-            Returns a `dict[str, Any]` containing all node fields, with enums 
-            properly unwrapped to their primitive string values.
-        """
-        return {
-            "node_id": self.node_id,
-            "node_type": (
-                self.node_type.value
-                if isinstance(self.node_type, NodeType)
-                else self.node_type
-            ),
-            "parent_id": self.parent_id,
-            "timestamp": self.timestamp,
-            "prompt_hash": self.prompt_hash,
-            "model": self.model,
-            "temperature": self.temperature,
-            "seed": self.seed,
-            "latency_ms": self.latency_ms,
-            "cost_usd": self.cost_usd,
-            "input_data": self.input_data,
-            "output_data": self.output_data,
-            "memory_snapshot": self.memory_snapshot,
-            "tool_parameters": self.tool_parameters,
-            "tool_result": self.tool_result,
-            "exception": self.exception,
-            "retry_count": self.retry_count,
-            "tags": self.tags,
-        }
-
-    @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> TraceNode:
-        """
-        Role:
-            Reconstructs and instantiates a TraceNode object from a stored dictionary.
-
-        When & Why:
-            Invoked when loading serialized logs, reading execution history from local 
-            files, or restoring a graph for offline debugging and analysis, safely 
-            converting primitive values back into their expected types.
-
-        Output:
-            Returns a fully typed, ready-to-use `TraceNode` instance with all its 
-            telemetry fields and unwrapped enums restored.
-        """
-        data_copy = data.copy()
-        if "node_type" in data_copy and isinstance(data_copy["node_type"], str):
-            data_copy["node_type"] = NodeType(data_copy["node_type"])
-        return cls(**data_copy)
-
-    def finish_trace(self, latency_ms: float | None = None) -> None:
+    def set_latency(self, latency_ms: float | None = None) -> None:
         """
         Role:
             Finalizes the lifespan of the node and tracks execution duration.

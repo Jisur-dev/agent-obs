@@ -1,20 +1,16 @@
 """Instrumentation entry points: core context managers for tracing."""
 
 from __future__ import annotations
-
-import functools
-from importlib import metadata
+import functools    
 import inspect
-from platform import node
 import time
-
 from contextlib import contextmanager
 from typing import Any, Callable
-
-from ..core.context import ExecutionContext
-from ..core.graph import ExecutionGraph
-from ..core.enums import NodeType
-from ..core.node import TraceNode
+from .execution_context import ExecutionContext
+from .trace_graph.execution_graph import ExecutionTree
+from .tracing_repository import InMemoryTracingRepository
+from .trace_graph.enums import NodeType
+from .trace_graph.trace_node import TraceNode
 
 
 class Tracer:
@@ -24,17 +20,17 @@ class Tracer:
     and persisting completed trace nodes to the designated backend storage.
     """
 
-    def __init__(
-        self,
-        graph: ExecutionGraph | None = None,
-        backend: Any = None,
-    ):
-        self.graph = graph or ExecutionGraph()
-        self.backend = backend
+    def __init__(self,tracing_repository: InMemoryTracingRepository | None = None):
+        self.graph = ExecutionTree()
+
+        self.tracing_repository = (
+            tracing_repository
+            if tracing_repository is not None
+            else InMemoryTracingRepository()
+        )
 
         self.context = ExecutionContext(
-            run_id=self.graph.run_id,
-            graph=self.graph,
+            run_id=self.graph.run_id
         )
 
     @contextmanager
@@ -43,12 +39,10 @@ class Tracer:
 
         node = TraceNode(node_type=node_type)
 
-        # Populate initial metadata
         for key, value in metadata.items():
             if hasattr(node, key):
                 setattr(node, key, value)
 
-        # Associate the node with this Tracer's execution context
         self.context.push_node(node)
 
         try:
@@ -61,24 +55,21 @@ class Tracer:
 
         try:
             yield node
+
         except Exception as exc:
             node.set_exception(exc)
             raise
 
         finally:
-            latency_ms = (
-                time.perf_counter() - start_counter
-            ) * 1000
+            latency_ms = (time.perf_counter() - start_counter) * 1000
 
-            node.finish_trace(latency_ms=latency_ms)
+            node.set_latency(latency_ms=latency_ms)
 
             self.context.pop_node()
 
-            if (
-                self.backend
-                and hasattr(self.backend, "save_node")
-            ):
-                self.backend.save_node(node)
+            # Persist the complete graph when the outermost span has finished.
+            if (self.tracing_repository is not None and self.context.get_current_node() is None):
+                self.tracing_repository.save(self.graph)
                 
     @contextmanager
     def trace(
@@ -285,7 +276,7 @@ class Tracer:
 
         return decorator(func)
 
-    def get_graph(self) -> ExecutionGraph:
+    def get_graph(self) -> ExecutionTree:
         """Return the execution graph."""
 
         return self.graph

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import enum
 
-
 class NodeType(str, enum.Enum):
     LLM_CALL = "llm_call"
     TOOL_CALL = "tool_call"
@@ -13,11 +12,9 @@ class NodeType(str, enum.Enum):
     RETRY = "retry"
     HUMAN_APPROVAL = "human_approval"
 
-
 class EdgeType(str, enum.Enum):
     PARENT_CHILD = "parent_child"
     DELEGATED_TO = "delegated_to"
     TOOL_CALL = "tool_call"
     MEMORY_READ = "memory_read"
     RETURNED_DATA = "returned_data"
-

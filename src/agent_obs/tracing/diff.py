@@ -9,7 +9,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from ..core.trace import ExecutionGraph
+from .trace_graph.execution_graph import ExecutionTree
 
 
 @dataclass
@@ -25,7 +25,7 @@ class GraphDivergence:
 class GraphDiffEngine:
     """Compares two ExecutionGraphs structurally rather than by raw text output."""
 
-    def __init__(self, graph_a: ExecutionGraph, graph_b: ExecutionGraph):
+    def __init__(self, graph_a: ExecutionTree, graph_b: ExecutionTree):
         pass
 
     def diff(self) -> list[GraphDivergence]:
