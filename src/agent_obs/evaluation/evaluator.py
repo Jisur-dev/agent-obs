@@ -88,5 +88,7 @@ class Evaluator:
     def evaluate_shadow(
         self, candidate_version_id: str, baseline_version_id: str
     ) -> RegressionReport:
+        # PART 2 starts here. It compares two versions. It receives two names.
+        # the new version (candidate) comes FIRST, the old one (baseline) second
         """Run a candidate version in shadow mode against the current baseline."""
         pass
