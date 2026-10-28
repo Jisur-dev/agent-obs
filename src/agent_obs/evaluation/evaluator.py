@@ -43,6 +43,7 @@ class Evaluator:
         self.prompts[version_id] = configuration
         # Put the prompt in the dictionary under its name.
         # Example: self.prompts["v1"] = "give me an assistance on this subject."
+    
     def evaluate(self, version_id: str, configuration) -> EvalResult:
             
             """PART 1. It tests one version and gives back an EvalResult."""
@@ -68,9 +69,18 @@ class Evaluator:
                     # Yes: we add this test case to the list.
             
             accuracy = len(successful_cases) * 100 / len(self.eval_set)
-                    # len() counts the items of a list.
-                    # successful cases * 100 / all test cases = percentage.
-                    # Example: 1 * 100 / 2 = 50.0
+            # len() counts the items of a list.
+            # successful cases * 100 / all test cases = percentage.
+            # Example: 1 * 100 / 2 = 50.0
+            result = EvalResult(version_id=version_id, accuracy=accuracy)
+            # We build an EvalResult object. We fill the name and the accuracy.
+            # The other fields stay None.
+            
+            self.storage[version_id] = result
+             # We save the result under the version name, so we can find it later.
+            
+            return result
+            # We give the result back to whoever called this method.        
             
             
                 
