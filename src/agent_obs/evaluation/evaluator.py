@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from regression import RegressionReport
+from regression import RegressionDetector, RegressionReport
 
 
 @dataclass
@@ -91,4 +91,20 @@ class Evaluator:
         # PART 2 starts here. It compares two versions. It receives two names.
         # the new version (candidate) comes FIRST, the old one (baseline) second
         """Run a candidate version in shadow mode against the current baseline."""
-        pass
+        baseline_result = self.evaluate(baseline_version_id, self.prompts[baseline_version_id])
+        # self.prompts[baseline_version_id] finds the old prompt by its name.
+        # Then we test it with the Part 1 method "evaluate". We get an EvalResult.
+        
+        candidate_result = self.evaluate(candidate_version_id, self.prompts[candidate_version_id])
+        # Same for the new prompt. It faces the same test cases, so the comparison is fair.
+        
+        config_diff = ["prompt changed"]
+        # A list that says what changed between the versions.
+        # In our simple project, only the prompt changes.
+        
+        detector = RegressionDetector()
+        # We create the judge from regression.py. No value given, so the default 0.05 (5 points) is used.
+        
+        return detector.detect(baseline_result, candidate_result, config_diff)
+        # We give the two results and the list of changes to the judge.
+        # He returns a RegressionReport and we give it back.

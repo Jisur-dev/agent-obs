@@ -8,7 +8,7 @@ from dataclasses import dataclass
 @dataclass
 class RegressionReport:
     """Whether a candidate version regressed relative to a baseline, and why."""
-
+    
     baseline_version_id: str
     candidate_version_id: str
     is_regression: bool
