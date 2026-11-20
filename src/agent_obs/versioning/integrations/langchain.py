@@ -1,9 +1,11 @@
+
 """LangChain integration for Jisur agent versioning."""
 
+from time import time
+from uuid import uuid4
+
 from langchain.agents import create_agent
-from agent_obs.integrations.langchain import (
-    LangChainConfigurationAdapter,
-)
+
 from agent_obs.versioning.artifact import (
     AgentConfiguration,
     PromptArtifact,
@@ -11,17 +13,15 @@ from agent_obs.versioning.artifact import (
 from agent_obs.versioning.extractor import AgentConfigurationExtractor
 from agent_obs.versioning.fingerprint import FingerprintComputer
 
+from agent_obs.versioning.repository import Version
+from agent_obs.versioning.repository import save
+
 
 class LangChainConfigurationAdapter:
     """Adapt LangChain factory arguments to Jisur's configuration schema."""
 
     @staticmethod
-    def extract(
-        model,
-        tools=None,
-        system_prompt=None,
-        examples=None,
-    ) -> dict:
+    def extract(model, tools=None, system_prompt=None) -> dict:
         """Extract configuration fields for versioning."""
 
         class AgentView:
@@ -30,33 +30,28 @@ class LangChainConfigurationAdapter:
         agent = AgentView()
         agent.model = model
         agent.tools = list(tools) if tools is not None else []
-        agent.system_prompt = (
-            system_prompt if system_prompt is not None else ""
-        )
-        agent.examples = list(examples) if examples is not None else []
+        agent.system_prompt = system_prompt or ""
+        agent.examples = []
 
         return AgentConfigurationExtractor.extract(agent)
 
 
-def create_obs_agent(
-    model,
-    tools=None,
-    system_prompt=None,
-    examples=None,
-    *,
-    return_version_info=False,
-    **kwargs,
-):
-    """Create a LangChain agent and compute its configuration fingerprint."""
+def create_agent_obs(model, tools=None, system_prompt=None, **kwargs):
+    """Create a LangChain agent and save its configuration version."""
 
     tools = list(tools) if tools is not None else []
-    examples = list(examples) if examples is not None else []
+
+    agent = create_agent(
+        model=model,
+        tools=tools,
+        system_prompt=system_prompt,
+        **kwargs,
+    )
 
     configuration = LangChainConfigurationAdapter.extract(
         model=model,
         tools=tools,
         system_prompt=system_prompt,
-        examples=examples,
     )
 
     prompt = PromptArtifact(
@@ -68,16 +63,19 @@ def create_obs_agent(
     )
 
     agent_configuration = AgentConfiguration(prompt=prompt)
+
     fingerprint = FingerprintComputer.compute(agent_configuration)
 
-    agent = create_agent(
-        model=model,
-        tools=tools,
-        system_prompt=system_prompt,
-        **kwargs,
+    version = Version(
+        version_id=str(uuid4()),
+        parent_version_id=None,
+        configuration=agent_configuration,
+        author="unknown",
+        message="Automatic configuration snapshot",
+        created_at=time(),
+        fingerprint=fingerprint,
     )
 
-    if return_version_info:
-        return agent, agent_configuration, fingerprint
+    save(version)
 
     return agent
