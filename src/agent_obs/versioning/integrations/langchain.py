@@ -1,4 +1,3 @@
-
 """LangChain integration for Jisur agent versioning."""
 
 from time import time
@@ -12,9 +11,7 @@ from agent_obs.versioning.artifact import (
 )
 from agent_obs.versioning.extractor import AgentConfigurationExtractor
 from agent_obs.versioning.fingerprint import FingerprintComputer
-
-from agent_obs.versioning.repository import Version
-from agent_obs.versioning.repository import save
+from agent_obs.versioning.repository import Version, VersionRepository
 
 
 class LangChainConfigurationAdapter:
@@ -76,6 +73,7 @@ def create_agent_obs(model, tools=None, system_prompt=None, **kwargs):
         fingerprint=fingerprint,
     )
 
-    save(version)
+    repository = VersionRepository()
+    repository.save(version)
 
     return agent
