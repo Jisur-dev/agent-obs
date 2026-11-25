@@ -1,6 +1,4 @@
 from agent_obs.versioning.artifact import AgentConfiguration, PromptArtifact
-from agent_obs.versioning.repository import VersionRepository
-
 def make_configuration(
     prompt_overrides=None,
     **configuration_overrides,
