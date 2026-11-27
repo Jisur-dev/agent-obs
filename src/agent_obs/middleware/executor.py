@@ -25,7 +25,11 @@ class CompensationExecutor:
     compensations in LIFO order with retry and idempotency handling.
     """
 
-    def __init__(self, compensation_registry: CompensationRegistry, retry_policy: dict | None = None):
+    def __init__(
+        self,
+        compensation_registry: CompensationRegistry,
+        retry_policy: dict | None = None,
+    ):
         pass
 
     def compensate(self, completed_actions: list[CompletedAction]) -> None:

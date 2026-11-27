@@ -1,5 +1,5 @@
-from agent_obs.tracing.tracer import Tracer
 from agent_obs.tracing.trace_graph.enums import NodeType
+from agent_obs.tracing.tracer import Tracer
 from agent_obs.tracing.tracing_repository import InMemoryTracingRepository
 
 
@@ -22,11 +22,7 @@ def test_repository_saves_complete_graph_after_execution():
     assert saved_graph.run_id == tracer.graph.run_id
     assert len(saved_graph.nodes) == 2
 
-    node_types = {
-        node.node_type
-        for node in saved_graph.nodes.values()
-    }
+    node_types = {node.node_type for node in saved_graph.nodes.values()}
 
     assert NodeType.AGENT in node_types
     assert NodeType.TOOL_CALL in node_types
-

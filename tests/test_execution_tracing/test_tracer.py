@@ -6,10 +6,9 @@ import pytest
 # Ensure project root is in Python path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from agent_obs.tracing.trace_graph.enums import NodeType, EdgeType
-from agent_obs.tracing.tracer import Tracer
-from agent_obs.tracing.helpers.trace_node_helper import TraceNodeHelper
 from agent_obs.tracing.helpers.trace_edge_helper import TraceEdgeHelper
+from agent_obs.tracing.trace_graph.enums import EdgeType, NodeType
+from agent_obs.tracing.tracer import Tracer
 
 
 @pytest.fixture
@@ -20,6 +19,7 @@ def tracer_instance():
 
 def test_trace_agent_execution_flow(tracer_instance):
     """Test that @trace_agent creates a root node."""
+
     @tracer_instance.trace_agent
     def run_agent(query: str):
         return f"Processed: {query}"
@@ -127,18 +127,15 @@ def test_nested_execution_tree(tracer_instance):
     assert len(graph.nodes) == 3
 
     agent_node = next(
-        node for node in graph.nodes.values()
-        if node.node_type == NodeType.AGENT
+        node for node in graph.nodes.values() if node.node_type == NodeType.AGENT
     )
 
     tool_node = next(
-        node for node in graph.nodes.values()
-        if node.node_type == NodeType.TOOL_CALL
+        node for node in graph.nodes.values() if node.node_type == NodeType.TOOL_CALL
     )
 
     llm_node = next(
-        node for node in graph.nodes.values()
-        if node.node_type == NodeType.LLM_CALL
+        node for node in graph.nodes.values() if node.node_type == NodeType.LLM_CALL
     )
 
     assert agent_node.parent_id is None

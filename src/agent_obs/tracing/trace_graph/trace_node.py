@@ -1,10 +1,12 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Any
 import time
 import uuid
+from dataclasses import dataclass, field
+from typing import Any
+
 from .enums import NodeType
+
 
 @dataclass
 class TraceNode:
@@ -16,15 +18,15 @@ class TraceNode:
         Classifies each step using NodeType (e.g., LLM_CALL, TOOL_CALL).
 
     When & Why:
-        Instantiated and tracked during workflow execution to capture 
+        Instantiated and tracked during workflow execution to capture
         comprehensive telemetry, inputs, outputs, latency, and cost per step.
 
     Exception Tracking:
-        Records runtime errors and exceptions natively to enable robust 
+        Records runtime errors and exceptions natively to enable robust
         debugging, root-cause analysis, and system auditing.
 
     Output:
-        Exposes a raw telemetry data structure ready for serialization 
+        Exposes a raw telemetry data structure ready for serialization
         and persistence.
     """
 
@@ -53,7 +55,7 @@ class TraceNode:
             Stores the resulting data produced by this execution step.
 
         When & Why:
-            Called upon successful completion of an operation (e.g., LLM text output 
+            Called upon successful completion of an operation (e.g., LLM text output
             or tool result) to capture and persist the final output payload.
 
         Output:
@@ -61,15 +63,14 @@ class TraceNode:
         """
         self.output_data = output
 
-
     def set_latency(self, latency_ms: float | None = None) -> None:
         """
         Role:
             Finalizes the lifespan of the node and tracks execution duration.
 
         When & Why:
-            Invoked at the end of a step to measure performance. If explicit 
-            latency is provided, it uses it; otherwise, it computes the exact 
+            Invoked at the end of a step to measure performance. If explicit
+            latency is provided, it uses it; otherwise, it computes the exact
             elapsed time in milliseconds from the node's creation timestamp.
 
         Output:
@@ -86,12 +87,12 @@ class TraceNode:
             Captures, formats, and stores runtime errors and exceptions.
 
         When & Why:
-            Triggered automatically when an unexpected error or failure occurs 
-            during a workflow step, ensuring the exception type and message 
+            Triggered automatically when an unexpected error or failure occurs
+            during a workflow step, ensuring the exception type and message
             are safely recorded for root-cause analysis and debugging.
 
         Output:
-            Updates the internal `exception` field with a formatted string 
+            Updates the internal `exception` field with a formatted string
             containing both the error name and its message.
         """
         error_name = type(exc).__name__

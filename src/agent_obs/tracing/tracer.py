@@ -1,16 +1,19 @@
 """Instrumentation entry points: core context managers for tracing."""
 
 from __future__ import annotations
-import functools    
+
+import functools
 import inspect
 import time
+from collections.abc import Callable
 from contextlib import contextmanager
-from typing import Any, Callable
+from typing import Any
+
 from .execution_context import ExecutionContext
-from .trace_graph.execution_graph import ExecutionTree
-from .tracing_repository import InMemoryTracingRepository
 from .trace_graph.enums import NodeType
+from .trace_graph.execution_graph import ExecutionTree
 from .trace_graph.trace_node import TraceNode
+from .tracing_repository import InMemoryTracingRepository
 
 
 class Tracer:
@@ -20,7 +23,7 @@ class Tracer:
     and persisting completed trace nodes to the designated backend storage.
     """
 
-    def __init__(self,tracing_repository: InMemoryTracingRepository | None = None):
+    def __init__(self, tracing_repository: InMemoryTracingRepository | None = None):
         self.graph = ExecutionTree()
 
         self.tracing_repository = (
@@ -29,13 +32,11 @@ class Tracer:
             else InMemoryTracingRepository()
         )
 
-        self.context = ExecutionContext(
-            run_id=self.graph.run_id
-        )
+        self.context = ExecutionContext(run_id=self.graph.run_id)
 
     @contextmanager
     def span(self, node_type: NodeType, **metadata: Any):
-        """Core context manager that opens, manages, and closes a trace node lifecycle."""
+        """Manage the lifecycle of a trace node."""
 
         node = TraceNode(node_type=node_type)
 
@@ -68,9 +69,12 @@ class Tracer:
             self.context.pop_node()
 
             # Persist the complete graph when the outermost span has finished.
-            if (self.tracing_repository is not None and self.context.get_current_node() is None):
+            if (
+                self.tracing_repository is not None
+                and self.context.get_current_node() is None
+            ):
                 self.tracing_repository.save(self.graph)
-                
+
     @contextmanager
     def trace(
         self,
@@ -84,13 +88,16 @@ class Tracer:
             node_type,
             **metadata,
         ) as node:
-
             if name and hasattr(node, "tags"):
                 node.tags.append(name)
 
             yield node
 
-    def trace_tool_call(self,func: Callable | None = None,**metadata: Any,) -> Callable:
+    def trace_tool_call(
+        self,
+        func: Callable | None = None,
+        **metadata: Any,
+    ) -> Callable:
         """Decorator that auto-instruments a tool execution."""
 
         def decorator(f: Callable) -> Callable:
@@ -115,7 +122,6 @@ class Tracer:
                     NodeType.TOOL_CALL,
                     **span_meta,
                 ) as node:
-
                     # Capture tool parameters cleanly across positional & keyword args
                     try:
                         signature = inspect.signature(f)
@@ -127,9 +133,7 @@ class Tracer:
 
                         bound_arguments.apply_defaults()
 
-                        node.tool_parameters = dict(
-                            bound_arguments.arguments
-                        )
+                        node.tool_parameters = dict(bound_arguments.arguments)
 
                     except (TypeError, ValueError):
                         node.tool_parameters = {
@@ -186,7 +190,6 @@ class Tracer:
                     NodeType.AGENT,
                     **span_meta,
                 ) as node:
-
                     result = f(
                         *args,
                         **kwargs,
@@ -257,7 +260,6 @@ class Tracer:
                     NodeType.LLM_CALL,
                     **span_meta,
                 ) as node:
-
                     # Execute the actual LLM call
                     result = f(
                         *args,

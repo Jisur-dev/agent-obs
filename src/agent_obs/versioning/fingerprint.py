@@ -15,14 +15,11 @@ if TYPE_CHECKING:
     from agent_obs.versioning.artifact import AgentConfiguration
 
 
-
-
-
 class FingerprintComputer:
     """Compute deterministic fingerprints for agent configurations."""
 
     @staticmethod
-    def compute( configuration: AgentConfiguration) -> str:
+    def compute(configuration: AgentConfiguration) -> str:
         """Compute the deterministic fingerprint of the full agent configuration."""
         payload = {
             "prompt": {
@@ -49,7 +46,7 @@ class FingerprintComputer:
         return hashlib.sha256(canonical).hexdigest()
 
     @staticmethod
-    def canonicalize( payload: dict) -> bytes:
+    def canonicalize(payload: dict) -> bytes:
         """Deterministically serialize a payload (stable key order, no whitespace)."""
         return json.dumps(
             payload,

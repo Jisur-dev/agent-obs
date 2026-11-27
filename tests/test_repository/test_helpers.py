@@ -2,8 +2,8 @@ from agent_obs.versioning.artifact import (
     AgentConfiguration,
     PromptArtifact,
 )
-from agent_obs.versioning.repository import Version
 from agent_obs.versioning.fingerprint import FingerprintComputer
+from agent_obs.versioning.repository import Version
 
 
 def create_test_version(
@@ -44,4 +44,3 @@ def create_test_version(
         created_at=1.0,
         fingerprint=FingerprintComputer.compute(configuration),
     )
-    
