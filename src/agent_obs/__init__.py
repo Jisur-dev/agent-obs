@@ -6,3 +6,11 @@ inspected, replayed, diffed, versioned, and evaluated -- not just logged.
 """
 
 __version__ = "0.1.0"
+
+
+from .tracing import Tracer
+
+__all__ = [
+    "Tracer",
+    "__version__",
+]
