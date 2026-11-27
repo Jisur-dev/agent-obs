@@ -45,5 +45,30 @@ class VersioningService:
 
         return version
 
+    def commit_if_changed(
+        self,
+        configuration: AgentConfiguration,
+        author: str,
+        message: str,
+    ) -> Version | None:
+        """Save a new version only if the configuration changed.
+
+        Args:
+            configuration (AgentConfiguration): The configuration to save.
+            author (str): Recorded as the version's author.
+            message (str): Recorded as the version's message.
+
+        Returns:
+            Version | None: The new version, or None if the fingerprint
+                matches the latest saved version.
+        """
+        fingerprint = FingerprintComputer.compute(configuration)
+        latest = self.repository.get_latest()
+
+        if latest is not None and latest.fingerprint == fingerprint:
+            return None
+
+        return self.commit(configuration, author=author, message=message)
+
    
     

@@ -92,3 +92,6 @@ source = "uv-dynamic-versioning"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/agent_obs"]
+
+[project.optional-dependencies]
+crewai = ["crewai>=1.0,<2.0"]
