@@ -1,10 +1,11 @@
 from .repository import Version, ConfigurationDiff
 from dataclasses import fields
+from agent_obs.Exeptions.type_errors import type_validator
 
 
 class VersionDifferenceCalculator:
     """Calculates differences between the configurations of two Version objects"""
-
+    
     @staticmethod
     def compare(version_a: Version, version_b: Version) -> ConfigurationDiff:
         """Compare the configurations of two versions and identify changed fields
@@ -16,6 +17,18 @@ class VersionDifferenceCalculator:
             ConfigurationDiff: An object containing both version IDs and a dictionary
             mapping each changed field name (str) to a tuple of (old_value, new_value)
         """
+        #create an instance pf the validator
+        validator = type_validator()
+        
+        #validate the input versions
+        validator.version_type_non_valid(version_a)
+        validator.version_type_non_valid(version_b)
+        
+        #validate the configurations
+        validator.config_type_non_valid(version_a)
+        validator.config_type_non_valid(version_b)
+
+        
         differences = {}
 
         config_a = version_a.configuration
