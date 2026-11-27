@@ -8,7 +8,7 @@ from contextlib import contextmanager
 from typing import Any, Callable
 from .execution_context import ExecutionContext
 from .trace_graph.execution_graph import ExecutionTree
-from .tracing_repository import InMemoryTracingRepository
+from .tracing_repository import InMemoryTracingRepository,TracingRepository
 from .trace_graph.enums import NodeType
 from .trace_graph.trace_node import TraceNode
 
@@ -20,7 +20,10 @@ class Tracer:
     and persisting completed trace nodes to the designated backend storage.
     """
 
-    def __init__(self,tracing_repository: InMemoryTracingRepository | None = None):
+    def __init__(
+        self,
+        tracing_repository: TracingRepository | None = None,
+    ) -> None:
         self.graph = ExecutionTree()
 
         self.tracing_repository = (
@@ -32,7 +35,6 @@ class Tracer:
         self.context = ExecutionContext(
             run_id=self.graph.run_id
         )
-
     @contextmanager
     def span(self, node_type: NodeType, **metadata: Any):
         """Core context manager that opens, manages, and closes a trace node lifecycle."""
