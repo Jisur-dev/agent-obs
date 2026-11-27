@@ -1,6 +1,8 @@
 from sqlalchemy import create_engine  
 from sqlalchemy.orm import Session, sessionmaker
 from .base import Base
+from . import models as _models
+
 
 DATABASE_URL="sqlite:///agent_obs.db"   
 engine = create_engine(DATABASE_URL)
