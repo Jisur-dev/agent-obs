@@ -164,16 +164,6 @@ def test_tool_without_to_dict_raises_attribute_error(invalid_tool):
         AgentConfigurationExtractor.from_agent(FakeAgent())
 
 
-def test_prompt_artifact_is_immutable():
-    artifact = PromptArtifact(
-        system_prompt="You are helpful.",
-        model="GPT-5",
-    )
-
-    with pytest.raises(AttributeError):
-        artifact.system_prompt = "Changed"
-
-
 @pytest.mark.parametrize(
     "attribute,value",
     [

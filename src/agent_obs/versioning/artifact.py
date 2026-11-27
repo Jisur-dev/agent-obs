@@ -9,14 +9,12 @@ not the prompt definition.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-
+from dataclasses import dataclass, field, fields
 from typing import Any
-
 
 from agent_obs.shared.immutable_list import ImmutableList
 
- 
+
 @dataclass(frozen=True)
 class PromptArtifact:
     """Everything that actually goes into an LLM call, versioned as one unit."""
@@ -50,7 +48,6 @@ class PromptArtifact:
     memory_template: Any | None = None
     retrieval_template: Any | None = None
 
-
     def __post_init__(self) -> None:
         object.__setattr__(
             self,
@@ -71,23 +68,28 @@ class PromptArtifact:
                 raise ValueError("temperature must be a number")
 
             if not 0 <= temperature <= 2:
-                raise ValueError(
-                    "temperature must be between 0 and 2"
-                )
+                raise ValueError("temperature must be between 0 and 2")
 
         if top_p is not None:
             if not isinstance(top_p, (int, float)):
                 raise ValueError("top_p must be a number")
 
             if not 0 <= top_p <= 1:
-                raise ValueError(
-                    "top_p must be between 0 and 1"
-                )
+                raise ValueError("top_p must be between 0 and 1")
 
-       
+    def to_dict(self) -> dict:
+        """JSON-friendly form: ImmutableLists become plain lists."""
+        data = {f.name: getattr(self, f.name) for f in fields(self)}
+        data["examples"] = list(self.examples)
+        data["tools"] = list(self.tools)
+        return data
 
-    
-    
+    @classmethod
+    def from_dict(cls, data: dict) -> PromptArtifact:
+        # __post_init__ wraps examples/tools back into ImmutableList
+        return cls(**data)
+
+
 @dataclass
 class AgentConfiguration:
     """The full reproducible definition of an agent, beyond just its prompt.
@@ -103,5 +105,16 @@ class AgentConfiguration:
     guardrails: list[str] = field(default_factory=list)
     retry_policy: dict | None = None
     planner_configuration: dict | None = None
-  
 
+    def to_dict(self) -> dict:
+        data = {
+            f.name: getattr(self, f.name) for f in fields(self) if f.name != "prompt"
+        }
+        data["prompt"] = self.prompt.to_dict()
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict) -> AgentConfiguration:
+        data = dict(data)
+        data["prompt"] = PromptArtifact.from_dict(data["prompt"])
+        return cls(**data)

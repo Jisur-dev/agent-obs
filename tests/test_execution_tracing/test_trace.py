@@ -1,6 +1,6 @@
-from agent_obs.tracing.tracer import Tracer
-from agent_obs.tracing.trace_graph.trace_node import TraceNode
 from agent_obs.tracing.trace_graph.enums import NodeType
+from agent_obs.tracing.trace_graph.trace_node import TraceNode
+from agent_obs.tracing.tracer import Tracer
 
 
 def test_trace_node_methods():

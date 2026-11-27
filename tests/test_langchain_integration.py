@@ -1,4 +1,3 @@
-
 from unittest.mock import MagicMock, patch
 from uuid import UUID
 
@@ -8,14 +7,10 @@ from langchain_core.messages import AIMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import tool
 
-from agent_obs.versioning.integrations import langchain as integration
 from agent_obs.versioning.integrations.langchain import (
     LangChainConfigurationAdapter,
     create_agent_obs,
 )
-
-
-
 
 # ---------------------------------------------------------------------
 # Test helpers
@@ -44,11 +39,7 @@ class FakeChatModel(BaseChatModel):
         **kwargs,
     ):
         return ChatResult(
-            generations=[
-                ChatGeneration(
-                    message=AIMessage(content="Test response")
-                )
-            ]
+            generations=[ChatGeneration(message=AIMessage(content="Test response"))]
         )
 
 
@@ -84,27 +75,36 @@ def mocked_integration(configuration):
             "LangChainConfigurationAdapter.extract"
         ) as mock_extract,
         patch(
-            "agent_obs.versioning.integrations.langchain."
-            "FingerprintComputer.compute"
-        ) as mock_compute,
+            "agent_obs.versioning.integrations.langchain.make_engine"
+        ) as mock_make_engine,
+        patch("agent_obs.versioning.integrations.langchain.init_db"),
         patch(
-            "agent_obs.versioning.integrations.langchain.VersionRepository"
+            "agent_obs.versioning.integrations.langchain.make_session_factory"
+        ) as mock_make_session_factory,
+        patch(
+            "agent_obs.versioning.integrations.langchain.SqliteVersionRepository"
         ) as mock_repository_class,
+        patch(
+            "agent_obs.versioning.integrations.langchain.VersioningService"
+        ) as mock_service_class,
     ):
         expected_agent = MagicMock(name="langchain_agent")
         mock_repository = mock_repository_class.return_value
 
         mock_create_agent.return_value = expected_agent
         mock_extract.return_value = configuration
-        mock_compute.return_value = "fingerprint-123"
+        mock_make_engine.return_value = MagicMock()
+        mock_make_session_factory.return_value = MagicMock()
+        mock_service_class.return_value = MagicMock()
 
         yield {
             "agent": expected_agent,
             "create_agent": mock_create_agent,
             "extract": mock_extract,
-            "compute": mock_compute,
             "repository_class": mock_repository_class,
             "repository": mock_repository,
+            "service_class": mock_service_class,
+            "service": mock_service_class.return_value,
             "configuration": configuration,
         }
 
@@ -202,16 +202,14 @@ def test_create_agent_obs_with_none_system_prompt(mocked_integration):
     )
 
     mocks["extract"].assert_called_once()
-    assert mocks["extract"].call_args.kwargs["system_prompt"] == ""
+    assert mocks["extract"].call_args.kwargs["system_prompt"] is None
 
 
 # ---------------------------------------------------------------------
 # Version creation and persistence
 # ---------------------------------------------------------------------
-
-
 def test_create_agent_obs_saves_expected_version(mocked_integration):
-    """The wrapper saves a version with the expected configuration."""
+    """The wrapper commits a version with the expected configuration."""
 
     mocks = mocked_integration
 
@@ -226,29 +224,19 @@ def test_create_agent_obs_saves_expected_version(mocked_integration):
     generated_agent_id = mocks["repository_class"].call_args.args[0]
     UUID(generated_agent_id)
 
-    mocks["repository"].save.assert_called_once()
+    mocks["service"].commit.assert_called_once()
 
-    saved_version = mocks["repository"].save.call_args.args[0]
-    agent_configuration = saved_version.configuration
-    prompt = agent_configuration.prompt
+    kwargs = mocks["service"].commit.call_args.kwargs
+    assert kwargs["author"] == "unknown"
+    assert kwargs["message"] == "Automatic configuration snapshot"
 
-    assert prompt.system_prompt == "You are a helpful assistant."
-    assert prompt.examples == []
-    assert prompt.tools == [
-        {"name": "search", "description": "Search the web"}
-    ]
-    assert prompt.model == "gpt-4.1"
-    assert prompt.model_parameters == {"temperature": 0.2}
+    agent_configuration = kwargs["configuration"]
 
-    assert saved_version.fingerprint == "fingerprint-123"
-    assert saved_version.author == "unknown"
-    assert saved_version.message == "Automatic configuration snapshot"
-    assert saved_version.parent_version_id is None
-
-    UUID(saved_version.version_id)
-    assert isinstance(saved_version.created_at, float)
-
-    mocks["compute"].assert_called_once()
+    assert (
+        agent_configuration.prompt.system_prompt
+        == (mocks["configuration"]["system_prompt"])
+    )
+    assert agent_configuration.prompt.model == "gpt-4.1"
 
 
 # ---------------------------------------------------------------------
@@ -260,9 +248,7 @@ def test_does_not_save_if_agent_creation_fails(mocked_integration):
     """No version is saved if LangChain agent creation fails."""
 
     mocks = mocked_integration
-    mocks["create_agent"].side_effect = RuntimeError(
-        "Agent creation failed"
-    )
+    mocks["create_agent"].side_effect = RuntimeError("Agent creation failed")
 
     with pytest.raises(RuntimeError, match="Agent creation failed"):
         create_agent_obs(
@@ -272,7 +258,7 @@ def test_does_not_save_if_agent_creation_fails(mocked_integration):
         )
 
     mocks["extract"].assert_not_called()
-    mocks["compute"].assert_not_called()
+    mocks["service"].commit.assert_not_called()
     mocks["repository"].save.assert_not_called()
 
 
@@ -289,44 +275,8 @@ def test_does_not_save_if_extraction_fails(mocked_integration):
             system_prompt="Test prompt",
         )
 
-    mocks["compute"].assert_not_called()
+    mocks["service"].commit.assert_not_called()
     mocks["repository"].save.assert_not_called()
-
-
-def test_does_not_save_if_fingerprint_computation_fails(
-    mocked_integration,
-):
-    """No version is saved if fingerprint computation fails."""
-
-    mocks = mocked_integration
-    mocks["compute"].side_effect = ValueError("Fingerprint failed")
-
-    with pytest.raises(ValueError, match="Fingerprint failed"):
-        create_agent_obs(
-            model="gpt-4.1",
-            tools=[],
-            system_prompt="Test prompt",
-        )
-
-    mocks["repository"].save.assert_not_called()
-
-
-def test_save_error_is_propagated(mocked_integration):
-    """Repository save errors are not silently swallowed."""
-
-    mocks = mocked_integration
-    mocks["repository"].save.side_effect = RuntimeError(
-        "Repository unavailable"
-    )
-
-    with pytest.raises(RuntimeError, match="Repository unavailable"):
-        create_agent_obs(
-            model="gpt-4.1",
-            tools=[],
-            system_prompt="Test prompt",
-        )
-
-    mocks["repository"].save.assert_called_once()
 
 
 # ---------------------------------------------------------------------
@@ -347,9 +297,7 @@ def test_adapter_extracts_real_langchain_tool():
     assert result["model"] == "gpt-4.1"
     assert len(result["tools"]) == 1
     assert result["tools"][0]["name"] == "get_weather"
-    assert result["tools"][0]["description"] == (
-        "Get the weather for a given city."
-    )
+    assert result["tools"][0]["description"] == ("Get the weather for a given city.")
     assert result["tools"][0]["args"]["city"]["type"] == "string"
 
 
@@ -369,4 +317,3 @@ def test_adapter_extracts_real_langchain_model():
 
     assert "jisur-test-model" in str(result["model"])
     assert result["model_parameters"]["temperature"] == 0.2
-

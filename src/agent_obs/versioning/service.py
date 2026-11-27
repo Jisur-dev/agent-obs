@@ -4,15 +4,14 @@ import time
 import uuid
 
 from .artifact import AgentConfiguration
-from .repository import Version, VersionRepository
 from .fingerprint import FingerprintComputer
-
+from .repository import Version, VersionStore
 
 
 class VersioningService:
     """Apply versioning rules and persist configuration versions."""
 
-    def __init__(self, repository: VersionRepository):
+    def __init__(self, repository: VersionStore):
         self.repository = repository
 
     def commit(
@@ -25,11 +24,7 @@ class VersioningService:
 
         latest = self.repository.get_latest()
 
-        parent_version_id = (
-            latest.version_id
-            if latest is not None
-            else None
-        )
+        parent_version_id = latest.version_id if latest is not None else None
 
         version = Version(
             version_id=str(uuid.uuid4()),
@@ -44,6 +39,3 @@ class VersioningService:
         self.repository.save(version)
 
         return version
-
-   
-    

@@ -1,11 +1,13 @@
 from __future__ import annotations
+
 from typing import Any
-from ..trace_graph.trace_node import TraceNode, NodeType
+
+from ..trace_graph.trace_node import NodeType, TraceNode
 
 
 class TraceNodeHelper:
     """
-    Helper class responsible for data manipulation and serialization/deserialization 
+    Helper class responsible for data manipulation and serialization/deserialization
     of TraceNode objects, keeping the core dataclass clean and decoupled.
     """
 
@@ -16,7 +18,7 @@ class TraceNodeHelper:
             Serializes a TraceNode instance into a standard dictionary format.
 
         When & Why:
-            Used when exporting execution state, persisting trace data, or sending 
+            Used when exporting execution state, persisting trace data, or sending
             node details across the network/logs.
         """
         return {
@@ -51,7 +53,7 @@ class TraceNodeHelper:
             Reconstructs a TraceNode instance from a raw dictionary.
 
         When & Why:
-            Used during state restoration, loading saved traces, or parsing 
+            Used during state restoration, loading saved traces, or parsing
             incoming serialized payloads back into active objects.
         """
         data_copy = data.copy()

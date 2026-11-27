@@ -7,7 +7,6 @@ from typing import Any
 
 
 class ExecutionContext:
-
     def __init__(
         self,
         run_id: str,

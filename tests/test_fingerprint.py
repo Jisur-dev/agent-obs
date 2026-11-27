@@ -35,9 +35,8 @@ def test_canonicalization_is_deterministic():
         },
     }
 
-    assert (
-        FingerprintComputer.canonicalize(value)
-        == FingerprintComputer.canonicalize(value)
+    assert FingerprintComputer.canonicalize(value) == FingerprintComputer.canonicalize(
+        value
     )
 
 
@@ -56,9 +55,8 @@ def test_nested_configuration_is_canonicalized_deterministically():
         }
     }
 
-    assert (
-        FingerprintComputer.canonicalize(first)
-        == FingerprintComputer.canonicalize(second)
+    assert FingerprintComputer.canonicalize(first) == FingerprintComputer.canonicalize(
+        second
     )
 
 
@@ -72,9 +70,8 @@ def test_canonicalization_preserves_list_order():
 def test_fingerprint_is_deterministic():
     configuration = make_configuration()
 
-    assert (
-        FingerprintComputer.compute(configuration)
-        == FingerprintComputer.compute(configuration)
+    assert FingerprintComputer.compute(configuration) == FingerprintComputer.compute(
+        configuration
     )
 
 
@@ -95,24 +92,14 @@ def test_from_agent_fingerprint_is_reproducible():
         prompt=AgentConfigurationExtractor.from_agent(FakeAgent())
     )
 
-    assert (
-        FingerprintComputer.compute(first)
-        == FingerprintComputer.compute(second)
-    )
+    assert FingerprintComputer.compute(first) == FingerprintComputer.compute(second)
 
 
 def test_fingerprint_changes_when_configuration_changes():
-    first = make_configuration(
-        prompt_overrides={"system_prompt": "Prompt A"}
-    )
-    second = make_configuration(
-        prompt_overrides={"system_prompt": "Prompt B"}
-    )
+    first = make_configuration(prompt_overrides={"system_prompt": "Prompt A"})
+    second = make_configuration(prompt_overrides={"system_prompt": "Prompt B"})
 
-    assert (
-        FingerprintComputer.compute(first)
-        != FingerprintComputer.compute(second)
-    )
+    assert FingerprintComputer.compute(first) != FingerprintComputer.compute(second)
 
 
 def test_fingerprint_changes_when_nested_configuration_changes():
@@ -135,25 +122,15 @@ def test_fingerprint_changes_when_nested_configuration_changes():
         }
     )
 
-    assert (
-        FingerprintComputer.compute(first)
-        != FingerprintComputer.compute(second)
-    )
+    assert FingerprintComputer.compute(first) != FingerprintComputer.compute(second)
 
 
 def test_agent_configuration_fingerprint_changes_when_tool_version_changes():
-    first = make_configuration(
-        tool_versions={"search": "1.0"}
-    )
+    first = make_configuration(tool_versions={"search": "1.0"})
 
-    second = make_configuration(
-        tool_versions={"search": "2.0"}
-    )
+    second = make_configuration(tool_versions={"search": "2.0"})
 
-    assert (
-        FingerprintComputer.compute(first)
-        != FingerprintComputer.compute(second)
-    )
+    assert FingerprintComputer.compute(first) != FingerprintComputer.compute(second)
 
 
 def test_agent_configuration_dictionary_key_order_is_ignored():
@@ -183,10 +160,7 @@ def test_agent_configuration_dictionary_key_order_is_ignored():
         },
     )
 
-    assert (
-        FingerprintComputer.compute(first)
-        == FingerprintComputer.compute(second)
-    )
+    assert FingerprintComputer.compute(first) == FingerprintComputer.compute(second)
 
 
 def test_agent_configuration_guardrail_order_is_preserved():
@@ -200,10 +174,7 @@ def test_agent_configuration_guardrail_order_is_preserved():
         guardrails=["b", "a"],
     )
 
-    assert (
-        FingerprintComputer.compute(first)
-        != FingerprintComputer.compute(second)
-    )
+    assert FingerprintComputer.compute(first) != FingerprintComputer.compute(second)
 
 
 def test_every_configuration_field_changes_fingerprint():

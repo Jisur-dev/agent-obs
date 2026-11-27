@@ -1,4 +1,3 @@
-
 class ImmutableList(list):
     """A list that cannot be modified after creation."""
 
@@ -25,4 +24,3 @@ class ImmutableList(list):
 
     def __imul__(self, other):
         raise TypeError("This list is immutable.")
-   

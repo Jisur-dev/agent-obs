@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from .trace_graph.execution_graph import ExecutionTree
 from .trace_graph.trace_node import TraceNode
-from ..tracing.trace_graph.enums import NodeType
 
 
 @dataclass
@@ -34,6 +33,8 @@ class ReplayEngine:
         """Produce a new ExecutionGraph representing the replayed run."""
         pass
 
-    def _resolve_node(self, node: TraceNode, overrides: list[ReplayOverride]) -> TraceNode:
+    def _resolve_node(
+        self, node: TraceNode, overrides: list[ReplayOverride]
+    ) -> TraceNode:
         """Apply any matching overrides to a single node before re-executing it."""
         pass

@@ -1,16 +1,15 @@
-
 """Tests for real LangChain agent construction and execution."""
 
 import pytest
-
 from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.messages import AIMessage, ToolMessage
 from langchain_core.outputs import ChatGeneration, ChatResult
 from langchain_core.tools import tool
 
+from agent_obs.versioning.db import make_engine
+from agent_obs.versioning.integrations import langchain as langchain_integration
 from agent_obs.versioning.integrations.langchain import create_agent_obs
-from agent_obs.versioning.repository import VersionRepository
-
+from agent_obs.versioning.repository import SqliteVersionRepository
 
 SYSTEM_PROMPT = "You are a helpful weather assistant."
 
@@ -42,11 +41,7 @@ class FakeChatModel(BaseChatModel):
         **kwargs,
     ):
         return ChatResult(
-            generations=[
-                ChatGeneration(
-                    message=AIMessage(content="Test response")
-                )
-            ]
+            generations=[ChatGeneration(message=AIMessage(content="Test response"))]
         )
 
 
@@ -61,11 +56,7 @@ class ToolCallingFakeChatModel(FakeChatModel):
         **kwargs,
     ):
         tool_message = next(
-            (
-                message
-                for message in messages
-                if isinstance(message, ToolMessage)
-            ),
+            (message for message in messages if isinstance(message, ToolMessage)),
             None,
         )
 
@@ -82,13 +73,10 @@ class ToolCallingFakeChatModel(FakeChatModel):
                 ],
             )
         else:
-            response = AIMessage(
-                content="The weather in Paris is sunny."
-            )
+            response = AIMessage(content="The weather in Paris is sunny.")
 
-        return ChatResult(
-            generations=[ChatGeneration(message=response)]
-        )
+        return ChatResult(generations=[ChatGeneration(message=response)])
+
 
 class MultiToolCallingFakeChatModel(FakeChatModel):
     """Fake model that requests multiple tools in one turn."""
@@ -101,9 +89,7 @@ class MultiToolCallingFakeChatModel(FakeChatModel):
         **kwargs,
     ):
         tool_messages = [
-            message
-            for message in messages
-            if isinstance(message, ToolMessage)
+            message for message in messages if isinstance(message, ToolMessage)
         ]
 
         if not tool_messages:
@@ -125,22 +111,22 @@ class MultiToolCallingFakeChatModel(FakeChatModel):
                 ],
             )
         else:
-            response = AIMessage(
-                content="Paris is sunny and the local time is 14:30."
-            )
+            response = AIMessage(content="Paris is sunny and the local time is 14:30.")
 
-        return ChatResult(
-            generations=[ChatGeneration(message=response)]
-        )
+        return ChatResult(generations=[ChatGeneration(message=response)])
+
+
 @tool
 def get_weather(city: str) -> str:
     """Get the weather for a given city."""
     return f"The weather in {city} is sunny."
 
+
 @tool
 def get_time(city: str) -> str:
     """Get the local time for a city."""
     return f"The local time in {city} is 14:30."
+
 
 # ---------------------------------------------------------------------
 # Fixtures
@@ -149,15 +135,22 @@ def get_time(city: str) -> str:
 
 @pytest.fixture
 def saved_versions(monkeypatch):
-    """Capture saved versions without requiring a database."""
+    """Capture saved versions using an in-memory database."""
 
     versions = []
+    engine = make_engine("sqlite://")
+
+    monkeypatch.setattr(
+        langchain_integration,
+        "make_engine",
+        lambda: engine,
+    )
 
     def capture_save(self, version):
         versions.append(version)
 
     monkeypatch.setattr(
-        VersionRepository,
+        SqliteVersionRepository,
         "save",
         capture_save,
     )
@@ -231,20 +224,14 @@ def test_real_langchain_agent_executes_tool(saved_versions):
     messages = result["messages"]
 
     tool_messages = [
-        message
-        for message in messages
-        if isinstance(message, ToolMessage)
+        message for message in messages if isinstance(message, ToolMessage)
     ]
 
     assert len(tool_messages) == 1
     assert tool_messages[0].name == "get_weather"
-    assert tool_messages[0].content == (
-        "The weather in Paris is sunny."
-    )
+    assert tool_messages[0].content == ("The weather in Paris is sunny.")
 
-    assert messages[-1].content == (
-        "The weather in Paris is sunny."
-    )
+    assert messages[-1].content == ("The weather in Paris is sunny.")
 
 
 def test_real_agent_configuration_is_saved(saved_versions):
@@ -266,9 +253,7 @@ def test_real_agent_configuration_is_saved(saved_versions):
 
     assert len(prompt.tools) == 1
     assert prompt.tools[0]["name"] == "get_weather"
-    assert prompt.tools[0]["description"] == (
-        "Get the weather for a given city."
-    )
+    assert prompt.tools[0]["description"] == ("Get the weather for a given city.")
 
     assert prompt.model == "jisur-test-model"
     assert prompt.model_parameters["temperature"] == 0.2
@@ -295,13 +280,7 @@ def test_agent_with_no_tools(saved_versions):
         system_prompt="You are a simple assistant.",
     )
 
-    result = agent.invoke(
-        {
-            "messages": [
-                {"role": "user", "content": "Hello"}
-            ]
-        }
-    )
+    result = agent.invoke({"messages": [{"role": "user", "content": "Hello"}]})
 
     assert result["messages"][-1].content == "Test response"
     assert len(saved_versions) == 1
@@ -389,8 +368,7 @@ def test_agent_with_long_system_prompt(saved_versions):
     """A long system prompt is preserved without truncation."""
 
     long_prompt = (
-        "You are a specialized assistant. "
-        "Follow the instructions carefully. "
+        "You are a specialized assistant. Follow the instructions carefully. "
     ) * 200
 
     create_agent_obs(
@@ -433,9 +411,7 @@ def test_agent_executes_multiple_tools(saved_versions):
     messages = result["messages"]
 
     tool_messages = [
-        message
-        for message in messages
-        if isinstance(message, ToolMessage)
+        message for message in messages if isinstance(message, ToolMessage)
     ]
 
     assert len(tool_messages) == 2
@@ -444,21 +420,12 @@ def test_agent_executes_multiple_tools(saved_versions):
 
     assert tool_names == {"get_weather", "get_time"}
 
-    tool_results = {
-        message.name: message.content
-        for message in tool_messages
-    }
+    tool_results = {message.name: message.content for message in tool_messages}
 
-    assert tool_results["get_weather"] == (
-        "The weather in Paris is sunny."
-    )
-    assert tool_results["get_time"] == (
-        "The local time in Paris is 14:30."
-    )
+    assert tool_results["get_weather"] == ("The weather in Paris is sunny.")
+    assert tool_results["get_time"] == ("The local time in Paris is 14:30.")
 
-    assert messages[-1].content == (
-        "Paris is sunny and the local time is 14:30."
-    )
+    assert messages[-1].content == ("Paris is sunny and the local time is 14:30.")
 
 
 # ---------------------------------------------------------------------
@@ -508,10 +475,7 @@ def test_different_system_prompts_produce_different_fingerprints(
 
     assert len(saved_versions) == 2
 
-    assert (
-        saved_versions[0].fingerprint
-        != saved_versions[1].fingerprint
-    )
+    assert saved_versions[0].fingerprint != saved_versions[1].fingerprint
 
 
 def test_different_model_parameters_produce_different_fingerprints(
@@ -533,10 +497,7 @@ def test_different_model_parameters_produce_different_fingerprints(
 
     assert len(saved_versions) == 2
 
-    assert (
-        saved_versions[0].fingerprint
-        != saved_versions[1].fingerprint
-    )
+    assert saved_versions[0].fingerprint != saved_versions[1].fingerprint
 
 
 def test_different_tools_produce_different_fingerprints(
@@ -558,7 +519,4 @@ def test_different_tools_produce_different_fingerprints(
 
     assert len(saved_versions) == 2
 
-    assert (
-        saved_versions[0].fingerprint
-        != saved_versions[1].fingerprint
-    )
+    assert saved_versions[0].fingerprint != saved_versions[1].fingerprint

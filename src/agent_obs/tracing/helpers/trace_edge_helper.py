@@ -1,12 +1,13 @@
-
 from __future__ import annotations
+
 from typing import Any
-from ..trace_graph.trace_edge import TraceEdge, EdgeType
+
+from ..trace_graph.trace_edge import EdgeType, TraceEdge
 
 
 class TraceEdgeHelper:
     """
-    Helper class responsible for data manipulation and serialization/deserialization 
+    Helper class responsible for data manipulation and serialization/deserialization
     of TraceEdge objects, decoupling data conversion logic from the edge model.
     """
 
@@ -17,7 +18,7 @@ class TraceEdgeHelper:
             Serializes a TraceEdge instance into a standard dictionary format.
 
         When & Why:
-            Used when exporting the graph's structural edges or persisting relationship 
+            Used when exporting the graph's structural edges or persisting relationship
             data for tracking agent workflows.
         """
         return {
@@ -37,7 +38,7 @@ class TraceEdgeHelper:
             Reconstructs a TraceEdge instance from a raw dictionary.
 
         When & Why:
-            Used during graph restoration and parsing serialized connection data 
+            Used during graph restoration and parsing serialized connection data
             back into valid edge objects.
         """
         data_copy = data.copy()

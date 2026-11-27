@@ -1,7 +1,5 @@
-
 """LangChain integration for Jisur agent versioning."""
 
-from time import time
 from uuid import uuid4
 
 from langchain.agents import create_agent
@@ -10,8 +8,13 @@ from agent_obs.versioning.artifact import (
     AgentConfiguration,
     PromptArtifact,
 )
-from agent_obs.versioning.fingerprint import FingerprintComputer
-from agent_obs.versioning.repository import Version, VersionRepository
+from agent_obs.versioning.db import (
+    init_db,
+    make_engine,
+    make_session_factory,
+)
+from agent_obs.versioning.repository import SqliteVersionRepository
+from agent_obs.versioning.service import VersioningService
 
 
 class LangChainConfigurationAdapter:
@@ -75,8 +78,8 @@ class LangChainConfigurationAdapter:
     def extract(model, tools=None, system_prompt=None) -> dict:
         """Extract LangChain configuration into Jisur's schema."""
 
-        model_name, model_parameters = (
-            LangChainConfigurationAdapter._extract_model(model)
+        model_name, model_parameters = LangChainConfigurationAdapter._extract_model(
+            model
         )
 
         return {
@@ -106,7 +109,7 @@ def create_agent_obs(model, tools=None, system_prompt=None, **kwargs):
     configuration = LangChainConfigurationAdapter.extract(
         model=model,
         tools=tools,
-        system_prompt=system_prompt or "",
+        system_prompt=system_prompt,
     )
 
     prompt = PromptArtifact(
@@ -119,19 +122,20 @@ def create_agent_obs(model, tools=None, system_prompt=None, **kwargs):
 
     agent_configuration = AgentConfiguration(prompt=prompt)
 
-    fingerprint = FingerprintComputer.compute(agent_configuration)
+    engine = make_engine()
+    init_db(engine)
+    session_factory = make_session_factory(engine)
 
-    version = Version(
-        version_id=str(uuid4()),
-        parent_version_id=None,
+    # Internal identifier: it is not part of the public API.
+    agent_id = str(uuid4())
+
+    repository = SqliteVersionRepository(agent_id, session_factory)
+    service = VersioningService(repository)
+
+    service.commit(
         configuration=agent_configuration,
         author="unknown",
         message="Automatic configuration snapshot",
-        created_at=time(),
-        fingerprint=fingerprint,
     )
-
-    repository = VersionRepository(str(uuid4()))
-    repository.save(version)
 
     return agent

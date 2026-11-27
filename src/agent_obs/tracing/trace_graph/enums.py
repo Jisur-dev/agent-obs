@@ -1,8 +1,9 @@
 from __future__ import annotations
 
-import enum
+from enum import StrEnum
 
-class NodeType(str, enum.Enum):
+
+class NodeType(StrEnum):
     LLM_CALL = "llm_call"
     TOOL_CALL = "tool_call"
     AGENT = "agent"
@@ -12,7 +13,8 @@ class NodeType(str, enum.Enum):
     RETRY = "retry"
     HUMAN_APPROVAL = "human_approval"
 
-class EdgeType(str, enum.Enum):
+
+class EdgeType(StrEnum):
     PARENT_CHILD = "parent_child"
     DELEGATED_TO = "delegated_to"
     TOOL_CALL = "tool_call"

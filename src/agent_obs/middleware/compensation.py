@@ -8,7 +8,6 @@ compensations if the overall process fails.
 
 from __future__ import annotations
 
-from .executor import CompensationExecutor
 from .registry import ActionRegistry, CompensationRegistry
 
 
