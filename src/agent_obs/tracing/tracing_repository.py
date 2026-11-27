@@ -17,7 +17,7 @@ class TracingRepository(ABC):
         raise NotImplementedError
 
 
-class InMemoryTracingRepository:
+class InMemoryTracingRepository(TracingRepository):
     """Temporary in-memory implementation for testing."""
 
     def __init__(self) -> None:
