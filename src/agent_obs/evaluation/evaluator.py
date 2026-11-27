@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from unittest import result
 
-from regression import RegressionDetector, RegressionReport
+from regression import RegressionReport
 
 
 @dataclass
@@ -26,8 +27,8 @@ class EvalResult:
 class Evaluator:
     """Runs an evaluation set against a version and records the outcome linkage."""
 
-    def __init__(self, eval_set, agent,storage=None):
-        self.eval_set = eval_set # Save the test cases inside the object.
+    def __init__(self, test_cases, agent,storage=None):
+        self.test_cases = test_cases # Save the test cases inside the object.
         self.agent = agent # Save the agent inside the object.
         self.prompts = {}
         # An empty dictionary. It will hold: version name -> prompt.
@@ -51,8 +52,7 @@ class Evaluator:
             successful_cases = []
 
             # An empty list. Every test case that the agent handles well will go in it.
-
-            for test_case in self.eval_set:
+            for test_case in self.test_cases:
              # A loop. We take the test cases one by one.
             # Each time, "test_case" is one dictionary like {"question": ..., "expected_output": ...}.
                 response = self.agent(configuration, test_case["question"])
@@ -68,7 +68,7 @@ class Evaluator:
                     successful_cases.append(test_case)
                     # Yes: we add this test case to the list.
             
-            accuracy = len(successful_cases) * 100 / len(self.eval_set)
+            accuracy = len(successful_cases) * 100 / len(self.test_cases)
             # len() counts the items of a list.
             # successful cases * 100 / all test cases = percentage.
             # Example: 1 * 100 / 2 = 50.0
@@ -80,7 +80,7 @@ class Evaluator:
              # We save the result under the version name, so we can find it later.
             
             return result
-            # We give the result back to whoever called this method.        
+            # We give the result back to whoever called this method.      
             
             
                 
@@ -91,20 +91,3 @@ class Evaluator:
         # PART 2 starts here. It compares two versions. It receives two names.
         # the new version (candidate) comes FIRST, the old one (baseline) second
         """Run a candidate version in shadow mode against the current baseline."""
-        baseline_result = self.evaluate(baseline_version_id, self.prompts[baseline_version_id])
-        # self.prompts[baseline_version_id] finds the old prompt by its name.
-        # Then we test it with the Part 1 method "evaluate". We get an EvalResult.
-        
-        candidate_result = self.evaluate(candidate_version_id, self.prompts[candidate_version_id])
-        # Same for the new prompt. It faces the same test cases, so the comparison is fair.
-        
-        config_diff = ["prompt changed"]
-        # A list that says what changed between the versions.
-        # In our simple project, only the prompt changes.
-        
-        detector = RegressionDetector()
-        # We create the judge from regression.py. No value given, so the default 0.05 (5 points) is used.
-        
-        return detector.detect(baseline_result, candidate_result, config_diff)
-        # We give the two results and the list of changes to the judge.
-        # He returns a RegressionReport and we give it back.
