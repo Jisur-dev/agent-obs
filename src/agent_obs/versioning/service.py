@@ -4,7 +4,7 @@ import time
 import uuid
 
 from .artifact import AgentConfiguration
-from .repository import Version, VersionRepository
+from .repository import Version, VersionStore
 from .fingerprint import FingerprintComputer
 
 
@@ -12,7 +12,7 @@ from .fingerprint import FingerprintComputer
 class VersioningService:
     """Apply versioning rules and persist configuration versions."""
 
-    def __init__(self, repository: VersionRepository):
+    def __init__(self, repository: VersionStore):
         self.repository = repository
 
     def commit(

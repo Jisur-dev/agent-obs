@@ -9,7 +9,7 @@ not the prompt definition.
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 
 from typing import Any
 
@@ -83,7 +83,17 @@ class PromptArtifact:
                 raise ValueError(
                     "top_p must be between 0 and 1"
                 )
+    def to_dict(self) -> dict:
+        """JSON-friendly form: ImmutableLists become plain lists."""
+        data = {f.name: getattr(self, f.name) for f in fields(self)}
+        data["examples"] = list(self.examples)
+        data["tools"] = list(self.tools)
+        return data
 
+    @classmethod
+    def from_dict(cls, data: dict) -> "PromptArtifact":
+        # __post_init__ wraps examples/tools back into ImmutableList
+        return cls(**data)
        
 
     
@@ -103,5 +113,14 @@ class AgentConfiguration:
     guardrails: list[str] = field(default_factory=list)
     retry_policy: dict | None = None
     planner_configuration: dict | None = None
-  
+    def to_dict(self) -> dict:
+        data = {f.name: getattr(self, f.name) for f in fields(self) if f.name != "prompt"}
+        data["prompt"] = self.prompt.to_dict()
+        return data
+
+    @classmethod
+    def from_dict(cls, data: dict) -> "AgentConfiguration":
+        data = dict(data)
+        data["prompt"] = PromptArtifact.from_dict(data["prompt"])
+        return cls(**data)
 
